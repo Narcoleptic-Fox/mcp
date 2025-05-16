@@ -32,8 +32,6 @@ func TestServerLifecycle(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	assert.NoError(t, err, "Start should succeed")
-	err = srv.Stop() // Clean up after test
-	assert.NoError(t, err, "Stop should succeed")
 
 	// Server should be in running state
 	assert.Equal(t, core.StatusRunning, srv.Status(), "Server should be in running state after start")
@@ -86,8 +84,6 @@ func TestServerWithClient(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	err = srv.Stop()
-	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server
 	c := client.New(
@@ -98,8 +94,6 @@ func TestServerWithClient(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	err = c.Stop()
-	require.NoError(t, err, "Client should stop successfully")
 
 	// Wait for the client to fully connect
 	assert.True(t, testutil.WaitForCondition(2*time.Second, 100*time.Millisecond, func() bool {
@@ -121,6 +115,12 @@ func TestServerWithClient(t *testing.T) {
 	assert.Equal(t, req.ID, resp.ID, "Response ID should match request ID")
 	assert.True(t, resp.Success, "Response should indicate success")
 	assert.Equal(t, "processed", resp.Results["status"], "Status should be set to 'processed'")
+
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
+
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 }
 
 func TestServerRejectedRequest(t *testing.T) {
@@ -146,8 +146,6 @@ func TestServerRejectedRequest(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	err = srv.Stop()
-	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server
 	c := client.New(
@@ -158,8 +156,6 @@ func TestServerRejectedRequest(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	err = c.Stop()
-	require.NoError(t, err, "Client should stop successfully")
 
 	// Create a request
 	req := testutil.CreateTestModelRequest()
@@ -175,6 +171,12 @@ func TestServerRejectedRequest(t *testing.T) {
 	// Verify the response reflects the rejection
 	assert.False(t, resp.Success, "Response should indicate failure")
 	assert.Equal(t, "rejected request", resp.ErrorMessage, "Error message should be set")
+
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
+
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 }
 
 func TestServerRequestTimeout(t *testing.T) {
@@ -193,8 +195,6 @@ func TestServerRequestTimeout(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	err = srv.Stop()
-	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server with the correct port
 	c := client.New(
@@ -205,8 +205,6 @@ func TestServerRequestTimeout(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	err = c.Stop()
-	require.NoError(t, err, "Client should stop successfully")
 
 	// Create a request
 	req := testutil.CreateTestModelRequest()
@@ -226,6 +224,12 @@ func TestServerRequestTimeout(t *testing.T) {
 	resp2, err2 := c.ProcessModel(ctx2, req)
 	assert.NoError(t, err2, "ProcessModel should succeed with sufficient timeout")
 	assert.NotNil(t, resp2, "Response should not be nil")
+
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
+
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 }
 
 // SlowModelHandler implements a handler that sleeps before responding
