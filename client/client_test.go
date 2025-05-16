@@ -145,8 +145,6 @@ func TestClientContextCancellation(t *testing.T) {
 	require.NoError(t, err, "Failed to create mock server")
 	err = mockServer.Start()
 	require.NoError(t, err, "Failed to start mock server")
-	err = mockServer.Stop()
-	require.NoError(t, err, "Failed to stop mock server")
 
 	// Create a client
 	client := New(
@@ -157,8 +155,6 @@ func TestClientContextCancellation(t *testing.T) {
 	// Start the client
 	err = client.Start()
 	require.NoError(t, err, "Client should start successfully")
-	err = client.Stop()
-	require.NoError(t, err, "Client should stop successfully")
 
 	// Configure mock server to delay response
 	testReq := testutil.CreateTestModelRequest()
@@ -181,4 +177,10 @@ func TestClientContextCancellation(t *testing.T) {
 	resp, err := client.ProcessModel(ctx, testReq)
 	assert.Error(t, err, "ProcessModel should return an error when context is canceled")
 	assert.Nil(t, resp, "Response should be nil when context is canceled")
+
+	err = client.Stop()
+	require.NoError(t, err, "Client should stop successfully")
+
+	err = mockServer.Stop()
+	require.NoError(t, err, "Failed to stop mock server")
 }
