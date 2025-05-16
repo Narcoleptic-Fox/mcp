@@ -21,8 +21,8 @@ func TestStatusString(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(string(c.status), func(t *testing.T) {
-			got := string(c.status)
+		t.Run(c.status.String(), func(t *testing.T) {
+			got := c.status.String()
 			assert.Equal(t, c.want, got, "Status string representation should match expected value")
 		})
 	}

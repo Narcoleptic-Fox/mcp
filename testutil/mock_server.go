@@ -31,7 +31,7 @@ func NewMockServer(t *testing.T) (*MockServer, error) {
 		return nil, err
 	}
 
-	listener, err := net.Listen("tcp", "localhost:"+string(port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +86,12 @@ func (m *MockServer) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonr
 	}
 }
 
-// Port returns the port number the mock server is listening on.
+// Check if this is correctly initialized
 func (m *MockServer) Port() int {
+	// Add nil check
+	if m == nil {
+		return 0 // or another appropriate default
+	}
 	return m.port
 }
 
