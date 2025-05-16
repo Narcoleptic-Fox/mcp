@@ -38,6 +38,7 @@ func TestClientLifecycle(t *testing.T) {
 func TestClientWithMockServer(t *testing.T) {
 	// Create a mock server
 	mockServer, err := testutil.NewMockServer(t)
+	require.NoError(t, err, "Failed to create mock server")
 
 	// Create a client that connects to our mock server
 	client := New(
