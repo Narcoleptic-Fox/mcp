@@ -38,7 +38,10 @@ func BenchmarkLocalRequestResponse(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to start server: %v", err)
 	}
-	defer srv.Stop()
+	err = srv.Stop()
+	if err != nil {
+		b.Fatalf("Failed to stop server: %v", err)
+	}
 
 	// Create and start client
 	c := client.New(
@@ -50,7 +53,10 @@ func BenchmarkLocalRequestResponse(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to start client: %v", err)
 	}
-	defer c.Stop()
+	err = c.Stop()
+	if err != nil {
+		b.Fatalf("Failed to stop client: %v", err)
+	}
 
 	// Ensure connection is established
 	if !testutil.WaitForCondition(5*time.Second, 100*time.Millisecond, func() bool {
@@ -115,7 +121,10 @@ func BenchmarkRequestSizes(b *testing.B) {
 			if err != nil {
 				b.Fatalf("Failed to start server: %v", err)
 			}
-			defer srv.Stop()
+			err = srv.Stop()
+			if err != nil {
+				b.Fatalf("Failed to stop server: %v", err)
+			}
 
 			// Create and start client
 			c := client.New(client.WithServerPort(port))
@@ -123,7 +132,10 @@ func BenchmarkRequestSizes(b *testing.B) {
 			if err != nil {
 				b.Fatalf("Failed to start client: %v", err)
 			}
-			defer c.Stop()
+			err = c.Stop()
+			if err != nil {
+				b.Fatalf("Failed to stop client: %v", err)
+			}
 
 			// Create a string payload of the specified size (roughly in KB)
 			payload := make([]byte, size*1024)
@@ -183,7 +195,10 @@ func BenchmarkConcurrentRequests(b *testing.B) {
 			if err != nil {
 				b.Fatalf("Failed to start server: %v", err)
 			}
-			defer srv.Stop()
+			err = srv.Stop()
+			if err != nil {
+				b.Fatalf("Failed to stop server: %v", err)
+			}
 
 			// Create and start client
 			c := client.New(client.WithServerPort(port))
@@ -191,7 +206,10 @@ func BenchmarkConcurrentRequests(b *testing.B) {
 			if err != nil {
 				b.Fatalf("Failed to start client: %v", err)
 			}
-			defer c.Stop()
+			err = c.Stop()
+			if err != nil {
+				b.Fatalf("Failed to stop client: %v", err)
+			}
 
 			// Create a standard request
 			req := core.NewModelRequest()

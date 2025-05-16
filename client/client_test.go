@@ -68,7 +68,8 @@ func TestClientWithMockServer(t *testing.T) {
 	// Start the client
 	err = client.Start()
 	assert.NoError(t, err, "Client should start successfully with mock server running")
-	defer client.Stop()
+	err = client.Stop()
+	assert.NoError(t, err, "Client should stop successfully")
 
 	// Wait for the client to fully connect
 	assert.True(t, testutil.WaitForCondition(2*time.Second, 100*time.Millisecond, func() bool {
@@ -110,7 +111,8 @@ func TestClientReconnect(t *testing.T) {
 	// Start the client
 	err = client.Start()
 	assert.NoError(t, err, "Client should start successfully")
-	defer client.Stop()
+	err = client.Stop()
+	assert.NoError(t, err, "Client should stop successfully")
 
 	// Wait for the client to connect
 	assert.True(t, testutil.WaitForCondition(2*time.Second, 100*time.Millisecond, func() bool {
@@ -126,7 +128,8 @@ func TestClientReconnect(t *testing.T) {
 	// Restart the server
 	err = mockServer.Start()
 	require.NoError(t, err, "Failed to restart mock server")
-	defer mockServer.Stop()
+	err = mockServer.Stop()
+	require.NoError(t, err, "Failed to stop mock server")
 
 	// Client should auto-reconnect
 	assert.True(t, testutil.WaitForCondition(5*time.Second, 500*time.Millisecond, func() bool {
@@ -140,7 +143,8 @@ func TestClientContextCancellation(t *testing.T) {
 	require.NoError(t, err, "Failed to create mock server")
 	err = mockServer.Start()
 	require.NoError(t, err, "Failed to start mock server")
-	defer mockServer.Stop()
+	err = mockServer.Stop()
+	require.NoError(t, err, "Failed to stop mock server")
 
 	// Create a client
 	client := New(
@@ -151,7 +155,8 @@ func TestClientContextCancellation(t *testing.T) {
 	// Start the client
 	err = client.Start()
 	require.NoError(t, err, "Client should start successfully")
-	defer client.Stop()
+	err = client.Stop()
+	require.NoError(t, err, "Client should stop successfully")
 
 	// Configure mock server to delay response
 	testReq := testutil.CreateTestModelRequest()

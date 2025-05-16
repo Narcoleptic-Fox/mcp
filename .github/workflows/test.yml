@@ -73,8 +73,9 @@ jobs:
         go-version: '1.20'
 
     - name: Run benchmarks
-      run: go test -tags=benchmark -bench=. -benchmem ./...
-      
+      # Save the benchmark output to the file that the action expects
+      run: go test -tags=benchmark -bench=. -benchmem ./... | tee benchmark-results.txt
+
     - name: Store benchmark result
       uses: benchmark-action/github-action-benchmark@v1
       with:
@@ -86,3 +87,6 @@ jobs:
         fail-on-alert: false
         alert-threshold: '150%'
         comment-always: true
+        # Add these missing parameters from your error message
+        gh-pages-branch: gh-pages
+        benchmark-data-dir-path: dev/bench

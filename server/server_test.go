@@ -32,7 +32,8 @@ func TestServerLifecycle(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	assert.NoError(t, err, "Start should succeed")
-	defer srv.Stop() // Clean up after test
+	err = srv.Stop() // Clean up after test
+	assert.NoError(t, err, "Stop should succeed")
 
 	// Server should be in running state
 	assert.Equal(t, core.StatusRunning, srv.Status(), "Server should be in running state after start")
@@ -85,7 +86,8 @@ func TestServerWithClient(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	defer srv.Stop()
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server
 	c := client.New(
@@ -96,7 +98,8 @@ func TestServerWithClient(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	defer c.Stop()
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
 
 	// Wait for the client to fully connect
 	assert.True(t, testutil.WaitForCondition(2*time.Second, 100*time.Millisecond, func() bool {
@@ -143,7 +146,8 @@ func TestServerRejectedRequest(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	defer srv.Stop()
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server
 	c := client.New(
@@ -154,7 +158,8 @@ func TestServerRejectedRequest(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	defer c.Stop()
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
 
 	// Create a request
 	req := testutil.CreateTestModelRequest()
@@ -188,7 +193,8 @@ func TestServerRequestTimeout(t *testing.T) {
 	// Start the server
 	err = srv.Start()
 	require.NoError(t, err, "Server should start successfully")
-	defer srv.Stop()
+	err = srv.Stop()
+	require.NoError(t, err, "Server should stop successfully")
 
 	// Create a client that connects to our server with the correct port
 	c := client.New(
@@ -199,7 +205,8 @@ func TestServerRequestTimeout(t *testing.T) {
 	// Start the client
 	err = c.Start()
 	require.NoError(t, err, "Client should connect to server")
-	defer c.Stop()
+	err = c.Stop()
+	require.NoError(t, err, "Client should stop successfully")
 
 	// Create a request
 	req := testutil.CreateTestModelRequest()
