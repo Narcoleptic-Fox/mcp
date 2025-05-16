@@ -7,7 +7,7 @@ This guide will help you get started with the Model Context Protocol (MCP) Go SD
 To install the MCP Go SDK, use the following command:
 
 ```bash
-go get github.com/yourorg/mcp
+go get github.com/narcolepticfox/mcp
 ```
 
 ## Setting Up a Simple Server
@@ -34,8 +34,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/server"
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/server"
 )
 
 // CustomModelHandler demonstrates a simple model handler implementation
@@ -130,8 +130,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourorg/mcp/client"
-	"github.com/yourorg/mcp/core"
+	"github.com/narcolepticfox/mcp/client"
+	"github.com/narcolepticfox/mcp/core"
 )
 
 func main() {

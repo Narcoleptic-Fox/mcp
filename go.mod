@@ -1,4 +1,4 @@
-module github.com/yourorg/mcp
+module github.com/narcolepticfox/mcp
 
 go 1.18
 

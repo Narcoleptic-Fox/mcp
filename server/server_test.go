@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/narcolepticfox/mcp/client"
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yourorg/mcp/client"
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/testutil"
 )
 
 func TestServerLifecycle(t *testing.T) {

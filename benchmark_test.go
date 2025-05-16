@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourorg/mcp/client"
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/server"
-	"github.com/yourorg/mcp/testutil"
+	"github.com/narcolepticfox/mcp/client"
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/server"
+	"github.com/narcolepticfox/mcp/testutil"
 )
 
 // BenchmarkLocalRequestResponse measures the round-trip time for local requests.

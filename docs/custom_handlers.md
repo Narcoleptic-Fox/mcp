@@ -20,7 +20,7 @@ To implement a basic handler:
 1. Create a struct that implements the `Handler` interface:
 
 ```go
-import "github.com/yourorg/mcp/server"
+import "github.com/narcolepticfox/mcp/server"
 
 // MyCustomHandler is a basic handler
 type MyCustomHandler struct {
@@ -53,8 +53,8 @@ To implement a model handler:
 import (
     "context"
     
-    "github.com/yourorg/mcp/core"
-    "github.com/yourorg/mcp/server"
+    "github.com/narcolepticfox/mcp/core"
+    "github.com/narcolepticfox/mcp/server"
 )
 
 // MyModelHandler is a custom model handler

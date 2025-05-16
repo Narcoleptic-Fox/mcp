@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/narcolepticfox/mcp/core"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/mcp/core"
 )
 
 func TestDefaultModelHandler_Methods(t *testing.T) {

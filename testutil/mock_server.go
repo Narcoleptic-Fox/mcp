@@ -9,9 +9,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/server"
 	"github.com/sourcegraph/jsonrpc2"
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/server"
 )
 
 // MockServer provides a test implementation of an MCP server.

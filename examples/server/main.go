@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/server"
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/server"
 )
 
 func main() {

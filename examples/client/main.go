@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yourorg/mcp/client"
-	"github.com/yourorg/mcp/core"
+	"github.com/narcolepticfox/mcp/client"
+	"github.com/narcolepticfox/mcp/core"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourorg/mcp/core"
+	"github.com/narcolepticfox/mcp/core"
 )
 
 // AssertEqual compares expected and actual values and fails the test if they don't match.

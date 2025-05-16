@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/narcolepticfox/mcp/core"
 	"github.com/sourcegraph/jsonrpc2"
-	"github.com/yourorg/mcp/core"
 )
 
 // Client implements the MCP client that connects to an MCP server.

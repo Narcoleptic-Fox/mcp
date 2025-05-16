@@ -16,7 +16,7 @@ The Model Context Protocol (MCP) provides a standardized way for applications to
 To install the MCP Go SDK, use the following command:
 
 ```bash
-go get github.com/yourorg/mcp
+go get github.com/narcolepticfox/mcp
 ```
 
 ## Requirements
@@ -38,8 +38,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourorg/mcp/core"
-	"github.com/yourorg/mcp/server"
+	"github.com/narcolepticfox/mcp/core"
+	"github.com/narcolepticfox/mcp/server"
 )
 
 func main() {
@@ -84,8 +84,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourorg/mcp/client"
-	"github.com/yourorg/mcp/core"
+	"github.com/narcolepticfox/mcp/client"
+	"github.com/narcolepticfox/mcp/core"
 )
 
 func main() {

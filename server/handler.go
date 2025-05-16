@@ -5,7 +5,7 @@ package server
 import (
 	"context"
 
-	"github.com/yourorg/mcp/core"
+	"github.com/narcolepticfox/mcp/core"
 )
 
 // Handler defines the interface for MCP request handlers.
