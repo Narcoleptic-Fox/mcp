@@ -25,7 +25,8 @@ func TestClientLifecycle(t *testing.T) {
 	})
 
 	// Start the client (this should fail since there's no server running)
-	assert.Error(t, client.Start(), "Start should fail when server is not available")
+	err := client.Start() // lint:ignore ineffassign this error is used in the following assertion
+	assert.Error(t, err, "Start should fail when server is not available")
 
 	// Client should be in error state after failed start
 	assert.Equal(t, core.StatusFailed, client.Status(), "Client should be in failed state after failed start")
