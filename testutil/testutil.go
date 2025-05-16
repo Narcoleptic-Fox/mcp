@@ -10,46 +10,6 @@ import (
 	"github.com/narcolepticfox/mcp/core"
 )
 
-// AssertEqual compares expected and actual values and fails the test if they don't match.
-func AssertEqual(t *testing.T, expected, actual interface{}, message string) {
-	t.Helper()
-	if expected != actual {
-		t.Errorf("%s: expected %v but got %v", message, expected, actual)
-	}
-}
-
-// AssertNil fails the test if the value is not nil.
-func AssertNil(t *testing.T, value interface{}, message string) {
-	t.Helper()
-	if value != nil {
-		t.Errorf("%s: expected nil but got %v", message, value)
-	}
-}
-
-// AssertNotNil fails the test if the value is nil.
-func AssertNotNil(t *testing.T, value interface{}, message string) {
-	t.Helper()
-	if value == nil {
-		t.Errorf("%s: unexpectedly got nil", message)
-	}
-}
-
-// AssertTrue fails the test if the condition is not true.
-func AssertTrue(t *testing.T, condition bool, message string) {
-	t.Helper()
-	if !condition {
-		t.Errorf("%s: condition not true", message)
-	}
-}
-
-// AssertFalse fails the test if the condition is not false.
-func AssertFalse(t *testing.T, condition bool, message string) {
-	t.Helper()
-	if condition {
-		t.Errorf("%s: condition not false", message)
-	}
-}
-
 // GetFreePort returns an available TCP port.
 func GetFreePort() (int, error) {
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")

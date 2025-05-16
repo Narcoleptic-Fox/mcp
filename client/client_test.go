@@ -16,7 +16,7 @@ func TestClientLifecycle(t *testing.T) {
 	client := New()
 
 	// Verify initial state
-	assert.Equal(t, core.StatusIdle, client.Status(), "Client should start in idle state")
+	assert.Equal(t, core.StatusStopped, client.Status(), "Client should start in idle state")
 
 	// Register for status change events
 	var statusEvents []core.StatusChangeEvent
@@ -29,7 +29,7 @@ func TestClientLifecycle(t *testing.T) {
 	assert.Error(t, err, "Start should fail when server is not available")
 
 	// Client should be in error state after failed start
-	assert.Equal(t, core.StatusError, client.Status(), "Client should be in error state after failed start")
+	assert.Equal(t, core.StatusFailed, client.Status(), "Client should be in failed state after failed start")
 
 	// Check that at least one status event was recorded
 	assert.NotEmpty(t, statusEvents, "At least one status event should have been emitted")
@@ -37,10 +37,7 @@ func TestClientLifecycle(t *testing.T) {
 
 func TestClientWithMockServer(t *testing.T) {
 	// Create a mock server
-	mockServer := testutil.NewMockServer(t)
-	err := mockServer.Start()
-	require.NoError(t, err, "Failed to start mock server")
-	defer mockServer.Stop()
+	mockServer, err := testutil.NewMockServer(t)
 
 	// Create a client that connects to our mock server
 	client := New(
@@ -97,8 +94,7 @@ func TestClientReconnect(t *testing.T) {
 	t.Skip("Reconnect test requires implementation of auto-reconnect feature")
 
 	// Create a mock server
-	mockServer := testutil.NewMockServer(t)
-	err := mockServer.Start()
+	mockServer, err := testutil.NewMockServer(t)
 	require.NoError(t, err, "Failed to start mock server")
 
 	// Create a client with auto-reconnect
@@ -140,8 +136,9 @@ func TestClientReconnect(t *testing.T) {
 
 func TestClientContextCancellation(t *testing.T) {
 	// Create a mock server
-	mockServer := testutil.NewMockServer(t)
-	err := mockServer.Start()
+	mockServer, err := testutil.NewMockServer(t)
+	require.NoError(t, err, "Failed to create mock server")
+	err = mockServer.Start()
 	require.NoError(t, err, "Failed to start mock server")
 	defer mockServer.Stop()
 

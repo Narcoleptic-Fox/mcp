@@ -19,7 +19,7 @@ import (
 // It manages the connection, handles request/response communication, and
 // provides methods for model processing operations.
 type Client struct {
-	opts             Options
+	options          Options
 	status           core.Status
 	statusMu         sync.RWMutex
 	conn             *jsonrpc2.Conn
@@ -45,7 +45,7 @@ func New(options ...Option) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Client{
-		opts:      opts,
+		options:   opts,
 		status:    core.StatusStopped,
 		callbacks: make([]func(core.StatusChangeEvent), 0),
 		ctx:       ctx,
@@ -72,7 +72,7 @@ func (c *Client) Start() error {
 	}
 
 	c.updateStatus(core.StatusRunning, nil)
-	log.Printf("MCP client connected to %s:%d", c.opts.ServerHost, c.opts.ServerPort)
+	log.Printf("MCP client connected to %s:%d", c.options.ServerHost, c.options.ServerPort)
 
 	return nil
 }
@@ -82,10 +82,10 @@ func (c *Client) Start() error {
 // the connection status.
 func (c *Client) connect() error {
 	// Create TCP connection
-	addr := fmt.Sprintf("%s:%d", c.opts.ServerHost, c.opts.ServerPort)
+	addr := fmt.Sprintf("%s:%d", c.options.ServerHost, c.options.ServerPort)
 
 	dialer := &net.Dialer{
-		Timeout: c.opts.ConnectionTimeout,
+		Timeout: c.options.ConnectionTimeout,
 	}
 
 	netConn, err := dialer.Dial("tcp", addr)
@@ -133,20 +133,20 @@ func (c *Client) monitorConnection() {
 	log.Printf("Disconnected from server")
 
 	// Handle reconnection if enabled
-	if c.opts.AutoReconnect && c.status == core.StatusRunning {
+	if c.options.AutoReconnect && c.status == core.StatusRunning {
 		c.attemptReconnect()
 	}
 }
 
 func (c *Client) attemptReconnect() {
-	for c.reconnectAttempt < c.opts.MaxReconnectAttempts {
+	for c.reconnectAttempt < c.options.MaxReconnectAttempts {
 		c.reconnectAttempt++
 
 		log.Printf("Attempting to reconnect (%d/%d)...",
-			c.reconnectAttempt, c.opts.MaxReconnectAttempts)
+			c.reconnectAttempt, c.options.MaxReconnectAttempts)
 
 		// Wait before reconnecting
-		time.Sleep(c.opts.ReconnectDelay)
+		time.Sleep(c.options.ReconnectDelay)
 
 		// Check if we're shutting down
 		select {

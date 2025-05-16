@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/narcolepticfox/mcp/core"
-	"github.com/narcolepticfox/mcp/server"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -21,7 +20,7 @@ type MockServer struct {
 	port        int
 	conn        *jsonrpc2.Conn
 	mutex       sync.Mutex
-	handler     server.ModelHandler
+	handler     func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error)
 	shouldError bool
 }
 
@@ -41,7 +40,7 @@ func NewMockServer(t *testing.T) (*MockServer, error) {
 		t:        t,
 		listener: listener,
 		port:     port,
-		handler:  server.NewDefaultModelHandler(),
+		handler:  func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error) { return nil, nil },
 	}
 
 	go mockServer.serve()
@@ -81,7 +80,7 @@ func (m *MockServer) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonr
 			return nil, fmt.Errorf("failed to unmarshal request params: %w", err)
 		}
 
-		return m.handler.ProcessModel(ctx, &modelReq)
+		return m.handler(ctx, &modelReq)
 	default:
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: "Method not found"}
 	}
@@ -99,8 +98,8 @@ func (m *MockServer) SetShouldError(shouldError bool) {
 	m.shouldError = shouldError
 }
 
-// SetModelHandler configures the mock server to use a custom model handler.
-func (m *MockServer) SetModelHandler(handler server.ModelHandler) {
+// SetupModelHandler configures a custom handler function for model processing requests.
+func (m *MockServer) SetupModelHandler(handler func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error)) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.handler = handler
@@ -117,4 +116,29 @@ func (m *MockServer) Close() error {
 	}
 
 	return m.listener.Close()
+}
+
+// Start starts the mock server.
+func (m *MockServer) Start() error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	// Server is already started by NewMockServer, no need to do anything here
+	return nil
+}
+
+// Stop stops the mock server.
+func (m *MockServer) Stop() error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.conn != nil {
+		m.conn.Close()
+		m.conn = nil
+	}
+
+	if m.listener != nil {
+		return m.listener.Close()
+	}
+
+	return nil
 }

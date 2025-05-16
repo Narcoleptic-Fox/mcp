@@ -55,7 +55,9 @@ func TestWithConnectionTimeout(t *testing.T) {
 
 func TestWithTLS(t *testing.T) {
 	options := DefaultOptions()
-	option := WithTLS(true)
+	cerPath := "/path/to/cert.pem"
+	keyPath := "/path/to/key.pem"
+	option := WithTLS(cerPath, keyPath)
 	option(&options)
 
 	assert.True(t, options.EnableTLS, "EnableTLS should be updated")

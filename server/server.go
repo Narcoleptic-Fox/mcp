@@ -19,7 +19,7 @@ import (
 // routes requests to appropriate handlers. It manages the server lifecycle,
 // network listeners, and registered method handlers.
 type Server struct {
-	opts      Options
+	options   Options
 	status    core.Status
 	statusMu  sync.RWMutex
 	listeners []net.Listener
@@ -43,7 +43,7 @@ func New(options ...Option) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Server{
-		opts:      opts,
+		options:   opts,
 		status:    core.StatusStopped,
 		handlers:  make(map[string]interface{}),
 		callbacks: make([]func(core.StatusChangeEvent), 0),
@@ -79,7 +79,7 @@ func (s *Server) Start() error {
 	s.statusMu.Unlock()
 
 	// Create TCP listener
-	addr := fmt.Sprintf("%s:%d", s.opts.Host, s.opts.Port)
+	addr := fmt.Sprintf("%s:%d", s.options.Host, s.options.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		s.updateStatus(core.StatusFailed, err)

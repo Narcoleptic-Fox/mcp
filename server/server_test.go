@@ -178,7 +178,7 @@ func TestServerRequestTimeout(t *testing.T) {
 	require.NoError(t, err, "Failed to get free port")
 
 	// Create a server
-	srv := New(WithPort(port))
+	srv := New()
 
 	// Register a handler that sleeps for a period
 	handler := &SlowModelHandler{delay: 500 * time.Millisecond}

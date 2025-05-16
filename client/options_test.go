@@ -72,7 +72,7 @@ func TestWithReconnectDelay(t *testing.T) {
 
 func TestWithTLS(t *testing.T) {
 	options := DefaultOptions()
-	option := WithTLS(true)
+	option := WithTLS()
 	option(&options)
 
 	assert.True(t, options.EnableTLS, "EnableTLS should be updated")

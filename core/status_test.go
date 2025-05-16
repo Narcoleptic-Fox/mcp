@@ -90,7 +90,7 @@ func (m *MockComponent) notifyStatusChange(oldStatus, newStatus Status, err erro
 
 func TestStatusChangeEvent(t *testing.T) {
 	// Test status change notifications
-	mockComponent := NewMockComponent(StatusIdle)
+	mockComponent := NewMockComponent(StatusStopped)
 
 	// Track status changes
 	var receivedEvents []StatusChangeEvent
@@ -107,20 +107,20 @@ func TestStatusChangeEvent(t *testing.T) {
 	// Test Stop causing a status change
 	err = mockComponent.Stop()
 	assert.NoError(t, err, "Stop should not return an error")
-	assert.Equal(t, StatusIdle, mockComponent.Status(), "Status should be idle after stop")
+	assert.Equal(t, StatusStopped, mockComponent.Status(), "Status should be idle after stop")
 	assert.True(t, mockComponent.stopCalled, "Stop method should be called")
 
 	// Verify that we received both status change events
 	assert.Len(t, receivedEvents, 2, "Should have received 2 status change events")
 
 	// Verify the first event (idle -> running)
-	assert.Equal(t, StatusIdle, receivedEvents[0].OldStatus, "First event old status should be idle")
+	assert.Equal(t, StatusStopped, receivedEvents[0].OldStatus, "First event old status should be idle")
 	assert.Equal(t, StatusRunning, receivedEvents[0].NewStatus, "First event new status should be running")
 	assert.Nil(t, receivedEvents[0].Error, "First event should not have an error")
 
 	// Verify the second event (running -> idle)
 	assert.Equal(t, StatusRunning, receivedEvents[1].OldStatus, "Second event old status should be running")
-	assert.Equal(t, StatusIdle, receivedEvents[1].NewStatus, "Second event new status should be idle")
+	assert.Equal(t, StatusStopped, receivedEvents[1].NewStatus, "Second event new status should be idle")
 	assert.Nil(t, receivedEvents[1].Error, "Second event should not have an error")
 }
 
@@ -129,7 +129,7 @@ func TestComponentErrors(t *testing.T) {
 	startErr := errors.New("start error")
 	stopErr := errors.New("stop error")
 
-	mockComponent := NewMockComponent(StatusIdle)
+	mockComponent := NewMockComponent(StatusStopped)
 	mockComponent.startErr = startErr
 	mockComponent.stopErr = stopErr
 

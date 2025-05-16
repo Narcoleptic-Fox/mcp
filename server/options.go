@@ -72,3 +72,19 @@ func WithTLS(certPath, keyPath string) Option {
 		o.CertificateKeyPath = keyPath
 	}
 }
+
+// Add your option functions here, e.g. WithHost, WithPort, etc.
+
+func WithCertificatePath(path string) Option {
+	return func(o *Options) {
+		o.CertificatePath = path
+	}
+}
+
+// Add your option functions here, e.g. WithHost, WithPort, etc.
+
+func WithCertificateKeyPath(path string) Option {
+	return func(o *Options) {
+		o.CertificateKeyPath = path
+	}
+}
