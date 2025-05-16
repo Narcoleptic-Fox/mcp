@@ -36,15 +36,15 @@ func TestServerLifecycle(t *testing.T) {
 	// Server should be in running state
 	assert.Equal(t, core.StatusRunning, srv.Status(), "Server should be in running state after start")
 
+	// Stop the server
+	err = srv.Stop()
+	assert.NoError(t, err, "Stop should succeed")
+
 	// Server should return to stopped state
 	assert.Equal(t, core.StatusStopped, srv.Status(), "Server should return to stopped state after stop")
 
 	// Check that at least two status events were recorded (idle->running, running->idle)
 	assert.GreaterOrEqual(t, len(statusEvents), 2, "At least two status events should have been emitted")
-
-	// Stop the server
-	err = srv.Stop()
-	assert.NoError(t, err, "Stop should succeed")
 }
 
 func TestHandlerRegistration(t *testing.T) {
