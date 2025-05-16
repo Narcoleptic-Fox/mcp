@@ -1,0 +1,1718 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>client: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/narcolepticfox/mcp/client/client.go (76.0%)</option>
+				
+				<option value="file1">github.com/narcolepticfox/mcp/client/options.go (100.0%)</option>
+				
+				<option value="file2">github.com/narcolepticfox/mcp/core/models.go (100.0%)</option>
+				
+				<option value="file3">github.com/narcolepticfox/mcp/core/status.go (100.0%)</option>
+				
+				<option value="file4">github.com/narcolepticfox/mcp/core/tools/validation.go (60.0%)</option>
+				
+				<option value="file5">github.com/narcolepticfox/mcp/examples/client/main.go (0.0%)</option>
+				
+				<option value="file6">github.com/narcolepticfox/mcp/examples/server/main.go (0.0%)</option>
+				
+				<option value="file7">github.com/narcolepticfox/mcp/server/handler.go (100.0%)</option>
+				
+				<option value="file8">github.com/narcolepticfox/mcp/server/options.go (100.0%)</option>
+				
+				<option value="file9">github.com/narcolepticfox/mcp/server/server.go (72.3%)</option>
+				
+				<option value="file10">github.com/narcolepticfox/mcp/testutil/mock_client.go (0.0%)</option>
+				
+				<option value="file11">github.com/narcolepticfox/mcp/testutil/mock_server.go (0.0%)</option>
+				
+				<option value="file12">github.com/narcolepticfox/mcp/testutil/testutil.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Package client provides a client implementation for the Model Context Protocol (MCP).
+// It allows applications to connect to MCP servers and make model processing requests.
+package client
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "log"
+        "net"
+        "sync"
+        "time"
+
+        "github.com/narcolepticfox/mcp/core"
+        "github.com/sourcegraph/jsonrpc2"
+)
+
+// Client implements the MCP client that connects to an MCP server.
+// It manages the connection, handles request/response communication, and
+// provides methods for model processing operations.
+type Client struct {
+        options          Options
+        status           core.Status
+        statusMu         sync.RWMutex
+        conn             *jsonrpc2.Conn
+        connMu           sync.RWMutex
+        callbacks        []func(core.StatusChangeEvent)
+        reconnectAttempt int
+        isConnected      bool
+
+        ctx    context.Context
+        cancel context.CancelFunc
+        wg     sync.WaitGroup
+}
+
+// New creates a new MCP client with the given options.
+// It applies all provided option functions to configure the client and
+// initializes it with default values for all unspecified options.
+func New(options ...Option) *Client <span class="cov8" title="1">{
+        opts := DefaultOptions()
+        for _, opt := range options </span><span class="cov8" title="1">{
+                opt(&amp;opts)
+        }</span>
+
+        <span class="cov8" title="1">ctx, cancel := context.WithCancel(context.Background())
+
+        return &amp;Client{
+                options:   opts,
+                status:    core.StatusStopped,
+                callbacks: make([]func(core.StatusChangeEvent), 0),
+                ctx:       ctx,
+                cancel:    cancel,
+        }</span>
+}
+
+// Start connects to the server and starts the client.
+// It establishes a connection to the configured server and initializes
+// the JSON-RPC communication channel. Returns an error if the client
+// is already running or if connection fails.
+func (c *Client) Start() error <span class="cov8" title="1">{
+        c.statusMu.Lock()
+        if c.status != core.StatusStopped </span><span class="cov0" title="0">{
+                c.statusMu.Unlock()
+                return fmt.Errorf("cannot start client in %s state", c.status)
+        }</span>
+        <span class="cov8" title="1">c.updateStatusLocked(core.StatusStarting, nil)
+        c.statusMu.Unlock()
+
+        if err := c.connect(); err != nil </span><span class="cov8" title="1">{
+                c.updateStatus(core.StatusFailed, err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">c.updateStatus(core.StatusRunning, nil)
+        log.Printf("MCP client connected to %s:%d", c.options.ServerHost, c.options.ServerPort)
+
+        return nil</span>
+}
+
+// connect establishes a TCP connection to the MCP server and sets up the JSON-RPC communication.
+// It creates the necessary streams and handlers, and starts a background goroutine to monitor
+// the connection status.
+func (c *Client) connect() error <span class="cov8" title="1">{
+        // Create TCP connection
+        addr := fmt.Sprintf("%s:%d", c.options.ServerHost, c.options.ServerPort)
+
+        dialer := &amp;net.Dialer{
+                Timeout: c.options.ConnectionTimeout,
+        }
+
+        netConn, err := dialer.Dial("tcp", addr)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to connect to %s: %w", addr, err)
+        }</span>
+
+        // Create JSON-RPC stream
+        <span class="cov8" title="1">stream := jsonrpc2.NewBufferedStream(netConn, jsonrpc2.VSCodeObjectCodec{})
+
+        // Create JSON-RPC handler
+        handler := &amp;rpcHandler{client: c}
+
+        // Create JSON-RPC connection
+        c.connMu.Lock()
+        c.conn = jsonrpc2.NewConn(c.ctx, stream, handler)
+        c.isConnected = true
+        c.connMu.Unlock()
+
+        // Monitor connection
+        c.wg.Add(1)
+        go c.monitorConnection()
+
+        return nil</span>
+}
+
+func (c *Client) monitorConnection() <span class="cov8" title="1">{
+        defer c.wg.Done()
+
+        c.connMu.RLock()
+        conn := c.conn
+        c.connMu.RUnlock()
+
+        if conn == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        // Wait for disconnection
+        <span class="cov8" title="1">&lt;-conn.DisconnectNotify()
+
+        c.connMu.Lock()
+        c.isConnected = false
+        c.connMu.Unlock()
+
+        log.Printf("Disconnected from server")
+
+        // Handle reconnection if enabled
+        if c.options.AutoReconnect &amp;&amp; c.status == core.StatusRunning </span><span class="cov0" title="0">{
+                c.attemptReconnect()
+        }</span>
+}
+
+func (c *Client) attemptReconnect() <span class="cov0" title="0">{
+        for c.reconnectAttempt &lt; c.options.MaxReconnectAttempts </span><span class="cov0" title="0">{
+                c.reconnectAttempt++
+
+                log.Printf("Attempting to reconnect (%d/%d)...",
+                        c.reconnectAttempt, c.options.MaxReconnectAttempts)
+
+                // Wait before reconnecting
+                time.Sleep(c.options.ReconnectDelay)
+
+                // Check if we're shutting down
+                select </span>{
+                case &lt;-c.ctx.Done():<span class="cov0" title="0">
+                        return</span>
+                default:<span class="cov0" title="0"></span>
+                        // Continue with reconnection
+                }
+
+                <span class="cov0" title="0">if err := c.connect(); err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Reconnection attempt failed: %v", err)
+                }</span> else<span class="cov0" title="0"> {
+                        log.Printf("Reconnected to server")
+                        c.reconnectAttempt = 0
+                        return
+                }</span>
+        }
+
+        <span class="cov0" title="0">log.Printf("Max reconnection attempts reached")
+        c.updateStatus(core.StatusFailed, errors.New("max reconnection attempts reached"))</span>
+}
+
+// Stop disconnects from the server and stops the client.
+func (c *Client) Stop() error <span class="cov8" title="1">{
+        c.statusMu.Lock()
+        if c.status != core.StatusRunning </span><span class="cov0" title="0">{
+                c.statusMu.Unlock()
+                return fmt.Errorf("cannot stop client in %s state", c.status)
+        }</span>
+        <span class="cov8" title="1">c.updateStatusLocked(core.StatusStopping, nil)
+        c.statusMu.Unlock()
+
+        // Cancel the context to signal shutdown
+        c.cancel()
+
+        // Close the connection
+        c.connMu.Lock()
+        if c.conn != nil </span><span class="cov8" title="1">{
+                c.conn.Close()
+                c.conn = nil
+        }</span>
+        <span class="cov8" title="1">c.isConnected = false
+        c.connMu.Unlock()
+
+        // Wait for all goroutines to finish
+        c.wg.Wait()
+
+        c.updateStatus(core.StatusStopped, nil)
+        log.Printf("MCP client stopped")
+
+        return nil</span>
+}
+
+// Status returns the current client status.
+func (c *Client) Status() core.Status <span class="cov8" title="1">{
+        c.statusMu.RLock()
+        defer c.statusMu.RUnlock()
+        return c.status
+}</span>
+
+// IsConnected returns whether the client is currently connected.
+func (c *Client) IsConnected() bool <span class="cov0" title="0">{
+        c.connMu.RLock()
+        defer c.connMu.RUnlock()
+        return c.isConnected
+}</span>
+
+// OnStatusChange registers a callback for status changes.
+func (c *Client) OnStatusChange(callback func(core.StatusChangeEvent)) <span class="cov8" title="1">{
+        c.callbacks = append(c.callbacks, callback)
+}</span>
+
+// ProcessModel sends a model processing request to the server.
+func (c *Client) ProcessModel(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error) <span class="cov8" title="1">{
+        c.connMu.RLock()
+        conn := c.conn
+        c.connMu.RUnlock()
+
+        if conn == nil </span><span class="cov0" title="0">{
+                return nil, errors.New("not connected to server")
+        }</span>
+
+        <span class="cov8" title="1">var resp core.ModelResponse
+        err := conn.Call(ctx, "mcp.processModel", req, &amp;resp)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("RPC error: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;resp, nil</span>
+}
+
+func (c *Client) updateStatus(newStatus core.Status, err error) <span class="cov8" title="1">{
+        c.statusMu.Lock()
+        defer c.statusMu.Unlock()
+        c.updateStatusLocked(newStatus, err)
+}</span>
+
+func (c *Client) updateStatusLocked(newStatus core.Status, err error) <span class="cov8" title="1">{
+        oldStatus := c.status
+        c.status = newStatus
+
+        event := core.StatusChangeEvent{
+                OldStatus: oldStatus,
+                NewStatus: newStatus,
+                Timestamp: time.Now(),
+                Error:     err,
+        }
+
+        // Notify callbacks
+        for _, callback := range c.callbacks </span><span class="cov8" title="1">{
+                go callback(event)
+        }</span>
+}
+
+// rpcHandler implements jsonrpc2.Handler for the client.
+type rpcHandler struct {
+        client *Client
+}
+
+// Handle handles JSON-RPC requests from the server.
+func (h *rpcHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) <span class="cov0" title="0">{
+        // Handle notifications or requests from the server
+        // In this simplified example, we just log them
+        log.Printf("Received request from server: %s", req.Method)
+
+        // We could dispatch to registered handlers here, similar to the server
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Package client provides a client implementation for the Model Context Protocol (MCP).
+package client
+
+import "time"
+
+// Options holds configuration parameters for the MCP client.
+// It defines connection settings, reconnection behavior, and security options.
+type Options struct {
+        ServerHost           string        // Hostname or IP address of the MCP server
+        ServerPort           int           // TCP port of the MCP server
+        ConnectionTimeout    time.Duration // Timeout for establishing a connection
+        AutoReconnect        bool          // Whether to automatically attempt reconnection on disconnect
+        MaxReconnectAttempts int           // Maximum number of reconnection attempts before giving up
+        ReconnectDelay       time.Duration // Time to wait between reconnection attempts
+        EnableTLS            bool          // Whether to use TLS for server connections
+}
+
+// DefaultOptions returns the default client options.
+// These defaults provide sensible starting values that work for most local deployments,
+// with automatic reconnection enabled but limited to 3 attempts.
+func DefaultOptions() Options <span class="cov8" title="1">{
+        return Options{
+                ServerHost:           "localhost",
+                ServerPort:           5000,
+                ConnectionTimeout:    30 * time.Second,
+                AutoReconnect:        true,
+                MaxReconnectAttempts: 3,
+                ReconnectDelay:       time.Second,
+                EnableTLS:            false,
+        }
+}</span>
+
+// Option is a function type that modifies Options.
+// It implements the functional options pattern for configuring the client.
+type Option func(*Options)
+
+// WithServerHost sets the hostname or IP address of the MCP server.
+// This can be a domain name, IPv4 address, or IPv6 address.
+func WithServerHost(host string) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.ServerHost = host
+        }</span>
+}
+
+// WithServerPort sets the TCP port number of the MCP server.
+// This must match the port the server is listening on.
+func WithServerPort(port int) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.ServerPort = port
+        }</span>
+}
+
+// WithConnectionTimeout sets the maximum time to wait when connecting to the server.
+// If the connection isn't established within this time, the attempt is aborted.
+func WithConnectionTimeout(timeout time.Duration) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.ConnectionTimeout = timeout
+        }</span>
+}
+
+// WithAutoReconnect enables or disables automatic reconnection.
+func WithAutoReconnect(enable bool) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.AutoReconnect = enable
+        }</span>
+}
+
+// WithMaxReconnectAttempts sets the maximum number of reconnection attempts.
+func WithMaxReconnectAttempts(max int) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.MaxReconnectAttempts = max
+        }</span>
+}
+
+// WithReconnectDelay sets the delay between reconnection attempts.
+func WithReconnectDelay(delay time.Duration) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.ReconnectDelay = delay
+        }</span>
+}
+
+// WithTLS enables TLS.
+func WithTLS() Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.EnableTLS = true
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package core provides the fundamental models and interfaces for the Model Context Protocol (MCP).
+package core
+
+import (
+        "time"
+)
+
+// ModelRequest represents a request to process a model.
+// It contains the request identifier, model data, and processing parameters.
+type ModelRequest struct {
+        ID         string                 `json:"id"`
+        ModelData  map[string]interface{} `json:"modelData"`
+        Parameters []Parameter            `json:"parameters"`
+}
+
+// ModelResponse represents the response from processing a model.
+// It includes the request identifier, success status, any error message,
+// processing results, and a timestamp.
+type ModelResponse struct {
+        ID           string                 `json:"id"`
+        Success      bool                   `json:"success"`
+        ErrorMessage string                 `json:"errorMessage,omitempty"`
+        Results      map[string]interface{} `json:"results"`
+        Timestamp    time.Time              `json:"timestamp"`
+}
+
+// Parameter represents a named parameter with type information for model processing.
+type Parameter struct {
+        Name  string      `json:"name"`
+        Value interface{} `json:"value"`
+        Type  string      `json:"type"`
+}
+
+// NewModelRequest creates a new request with a generated ID.
+// The returned request has initialized maps and slices ready to use.
+func NewModelRequest() *ModelRequest <span class="cov8" title="1">{
+        return &amp;ModelRequest{
+                ID:         generateID(),
+                ModelData:  make(map[string]interface{}),
+                Parameters: make([]Parameter, 0),
+        }
+}</span>
+
+// NewModelResponse creates a response for a given request.
+// The response contains the same ID as the request and is initialized
+// with a success status, empty results map, and current timestamp.
+func NewModelResponse(req *ModelRequest) *ModelResponse <span class="cov8" title="1">{
+        return &amp;ModelResponse{
+                ID:        req.ID,
+                Success:   true,
+                Results:   make(map[string]interface{}),
+                Timestamp: time.Now(),
+        }
+}</span>
+
+// ErrorResponse creates an error response for a given request with the provided error.
+// The response is marked as unsuccessful and includes the error message.
+func ErrorResponse(req *ModelRequest, err error) *ModelResponse <span class="cov8" title="1">{
+        return &amp;ModelResponse{
+                ID:           req.ID,
+                Success:      false,
+                ErrorMessage: err.Error(),
+                Results:      make(map[string]interface{}),
+                Timestamp:    time.Now(),
+        }
+}</span>
+
+// generateID creates a new unique ID using a timestamp-based approach.
+// Note: In a production environment, consider using UUID or another more robust
+// identifier generation method.
+func generateID() string <span class="cov8" title="1">{
+        return "mcp-" + time.Now().Format("20060102150405")
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Package core provides the fundamental models and interfaces for the Model Context Protocol (MCP).
+package core
+
+import "time"
+
+// Status represents the operational status of an MCP component.
+// It uses enumerated values to indicate the component's current state.
+type Status int
+
+const (
+        // StatusStopped indicates the component is not running.
+        StatusStopped Status = iota
+
+        // StatusStarting indicates the component is in the process of starting.
+        StatusStarting
+
+        // StatusRunning indicates the component is operational.
+        StatusRunning
+
+        // StatusStopping indicates the component is shutting down.
+        StatusStopping
+
+        // StatusFailed indicates the component encountered an error.
+        StatusFailed
+)
+
+// String returns a string representation of the status.
+// This implements the Stringer interface for the Status type.
+func (s Status) String() string <span class="cov8" title="1">{
+        return [...]string{"Stopped", "Starting", "Running", "Stopping", "Failed"}[s]
+}</span>
+
+// StatusChangeEvent represents a status change notification.
+// It contains the previous and new status, the time of the change, and any associated error.
+type StatusChangeEvent struct {
+        OldStatus Status    // Status before the change
+        NewStatus Status    // Status after the change
+        Timestamp time.Time // When the status change occurred
+        Error     error     // Error that caused the status change, if any
+}
+
+// Component defines the interface for MCP components.
+// All components in the MCP system must implement these methods
+// to provide consistent lifecycle management and status reporting.
+type Component interface {
+        // Start initializes the component and begins its operation.
+        // Returns an error if the component fails to start.
+        Start() error
+
+        // Stop terminates the component's operation in a graceful manner.
+        // Returns an error if the component fails to stop properly.
+        Stop() error
+
+        // Status returns the current operational status of the component.
+        Status() Status
+
+        // OnStatusChange registers a callback function to be called when the component's status changes.
+        // The callback receives a StatusChangeEvent containing details about the change.
+        OnStatusChange(callback func(StatusChangeEvent))
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Package tools provides utility functions and types for MCP implementations.
+package tools
+
+import (
+        "errors"
+        "fmt"
+)
+
+// ValidationResult contains the result of a validation operation.
+// It tracks whether validation passed and collects any validation errors.
+type ValidationResult struct {
+        Valid  bool              // Whether validation passed
+        Errors []ValidationError // Collection of validation errors
+}
+
+// ValidationError represents a specific error found during validation.
+// It identifies both the field that failed validation and the reason.
+type ValidationError struct {
+        Field   string // Name of the field that failed validation
+        Message string // Description of why validation failed
+}
+
+// NewValidationResult creates a new, valid validation result with no errors.
+// This is typically used at the start of a validation process.
+func NewValidationResult() *ValidationResult <span class="cov8" title="1">{
+        return &amp;ValidationResult{
+                Valid:  true,
+                Errors: make([]ValidationError, 0),
+        }
+}</span>
+
+// AddError adds a validation error to the result and marks it as invalid.
+// The field parameter identifies what was being validated, and message
+// explains why validation failed.
+func (vr *ValidationResult) AddError(field, message string) <span class="cov8" title="1">{
+        vr.Valid = false
+        vr.Errors = append(vr.Errors, ValidationError{
+                Field:   field,
+                Message: message,
+        })
+}</span>
+
+// Error returns all validation errors as a single error object.
+// If validation passed, it returns nil. Otherwise, it returns an error
+// containing all field-specific error messages.
+func (vr *ValidationResult) Error() error <span class="cov8" title="1">{
+        if vr.Valid </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">errorMsg := "validation failed:"
+        for _, err := range vr.Errors </span><span class="cov8" title="1">{
+                errorMsg += fmt.Sprintf(" %s: %s;", err.Field, err.Message)
+        }</span>
+        <span class="cov8" title="1">return errors.New(errorMsg)</span>
+}
+
+// Validator provides methods for validating MCP data structures.
+// It contains reusable validation logic that can be applied to various objects.
+type Validator struct{}
+
+// NewValidator creates a new validator.
+func NewValidator() *Validator <span class="cov0" title="0">{
+        return &amp;Validator{}
+}</span>
+
+// Validate validates a struct and returns a validation result.
+func (v *Validator) Validate(obj interface{}) *ValidationResult <span class="cov0" title="0">{
+        result := NewValidationResult()
+
+        // Basic validation: check if nil
+        if obj == nil </span><span class="cov0" title="0">{
+                result.AddError("object", "cannot be nil")
+                return result
+        }</span>
+
+        // In a real implementation, we'd add more validation logic here
+        // Example: validate required fields, data types, etc.
+        // This would use reflection to examine struct fields and tags
+
+        <span class="cov0" title="0">return result</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Example client application for the Model Context Protocol (MCP).
+// This demonstrates how to create a client, connect to a server,
+// and send model processing requests.
+package main
+
+import (
+        "context"
+        "log"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/narcolepticfox/mcp/client"
+        "github.com/narcolepticfox/mcp/core"
+)
+
+func main() <span class="cov0" title="0">{
+        // Create a client with custom options
+        c := client.New(
+                client.WithServerHost("localhost"),
+                client.WithServerPort(5000),
+                client.WithAutoReconnect(true),
+        )
+
+        // Register a status change callback
+        c.OnStatusChange(func(event core.StatusChangeEvent) </span><span class="cov0" title="0">{
+                log.Printf("Client status changed: %s -&gt; %s",
+                        event.OldStatus, event.NewStatus)
+                if event.Error != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error: %v", event.Error)
+                }</span>
+        })
+
+        // Start the client
+        <span class="cov0" title="0">if err := c.Start(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to start client: %v", err)
+        }</span>
+
+        // Create a model request
+        <span class="cov0" title="0">req := core.NewModelRequest()
+        req.ModelData["name"] = "Test Model"
+        req.ModelData["value"] = 42
+        req.Parameters = append(req.Parameters, core.Parameter{
+                Name:  "param1",
+                Value: "value1",
+                Type:  "string",
+        })
+
+        // Send the request
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+
+        resp, err := c.ProcessModel(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to process model: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("Response: %+v", resp)
+
+        // Wait for interrupt signal
+        sigCh := make(chan os.Signal, 1)
+        signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-sigCh
+
+        // Stop the client
+        if err := c.Stop(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to stop client: %v", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Example server application for the Model Context Protocol (MCP).
+// This demonstrates how to create a server, register handlers,
+// and process incoming model requests.
+package main
+
+import (
+        "log"
+        "os"
+        "os/signal"
+        "syscall"
+
+        "github.com/narcolepticfox/mcp/core"
+        "github.com/narcolepticfox/mcp/server"
+)
+
+func main() <span class="cov0" title="0">{
+        // Create a server with custom options
+        srv := server.New(
+                server.WithHost("0.0.0.0"),
+                server.WithPort(5000),
+        )
+
+        // Register the default model handler
+        handler := server.NewDefaultModelHandler()
+        if err := srv.RegisterHandler(handler); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to register handler: %v", err)
+        }</span>
+
+        // Register a status change callback
+        <span class="cov0" title="0">srv.OnStatusChange(func(event core.StatusChangeEvent) </span><span class="cov0" title="0">{
+                log.Printf("Server status changed: %s -&gt; %s",
+                        event.OldStatus, event.NewStatus)
+                if event.Error != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error: %v", event.Error)
+                }</span>
+        })
+
+        // Start the server
+        <span class="cov0" title="0">if err := srv.Start(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to start server: %v", err)
+        }</span>
+
+        // Wait for interrupt signal
+        <span class="cov0" title="0">sigCh := make(chan os.Signal, 1)
+        signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-sigCh
+
+        // Stop the server
+        if err := srv.Stop(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to stop server: %v", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package server provides a server implementation for the Model Context Protocol (MCP).
+// It allows applications to receive and process model requests using registered handlers.
+package server
+
+import (
+        "context"
+
+        "github.com/narcolepticfox/mcp/core"
+)
+
+// Handler defines the interface for MCP request handlers.
+// Handlers implement specific RPC methods that can be invoked by clients.
+type Handler interface {
+        // Methods returns the list of method names that this handler implements.
+        // These method names are used to register the handler with the server.
+        Methods() []string
+}
+
+// ModelHandler handles model processing requests.
+// It extends the base Handler interface with a method for processing model requests.
+type ModelHandler interface {
+        Handler
+        // ProcessModel processes a model request and returns a response or an error.
+        // The context can be used for cancellation and timeout control.
+        ProcessModel(context.Context, *core.ModelRequest) (*core.ModelResponse, error)
+}
+
+// DefaultModelHandler provides a default implementation of the ModelHandler interface.
+// It can be used as a starting point for custom model handlers or for testing.
+type DefaultModelHandler struct{}
+
+// NewDefaultModelHandler creates a new instance of DefaultModelHandler.
+// This provides a simple handler that can be registered with an MCP server.
+func NewDefaultModelHandler() *DefaultModelHandler <span class="cov8" title="1">{
+        return &amp;DefaultModelHandler{}
+}</span>
+
+// Methods returns the list of method names that this handler implements.
+// For DefaultModelHandler, this includes only the model processing method.
+func (h *DefaultModelHandler) Methods() []string <span class="cov8" title="1">{
+        return []string{"mcp.processModel"}
+}</span>
+
+// ProcessModel processes a model request and returns a successful response.
+// This default implementation simply acknowledges the request without performing
+// any actual model processing. It should be overridden in production handlers.
+func (h *DefaultModelHandler) ProcessModel(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error) <span class="cov8" title="1">{
+        resp := core.NewModelResponse(req)
+
+        // In a real implementation, this would process the model
+        resp.Results["status"] = "processed"
+        resp.Results["message"] = "Model processed successfully"
+
+        return resp, nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package server provides a server implementation for the Model Context Protocol (MCP).
+package server
+
+import "time"
+
+// Options holds configuration parameters for the MCP server.
+// It defines network settings, connection limits, timeouts, and TLS configuration.
+type Options struct {
+        Host                 string        // Network interface to bind to, e.g., "127.0.0.1" for localhost only
+        Port                 int           // TCP port to listen on
+        MaxConcurrentClients int           // Maximum number of simultaneous client connections
+        ConnectionTimeout    time.Duration // Time limit for establishing connections
+        EnableTLS            bool          // Whether to use TLS encryption for connections
+        CertificatePath      string        // Path to the TLS certificate file when TLS is enabled
+        CertificateKeyPath   string        // Path to the TLS certificate key file when TLS is enabled
+}
+
+// DefaultOptions returns the default server options.
+// These defaults provide a reasonable starting point for most deployments
+// with the server listening only on localhost.
+func DefaultOptions() Options <span class="cov8" title="1">{
+        return Options{
+                Host:                 "127.0.0.1",
+                Port:                 5000,
+                MaxConcurrentClients: 10,
+                ConnectionTimeout:    30 * time.Second,
+                EnableTLS:            false,
+        }
+}</span>
+
+// Option is a function type that modifies Options.
+// It implements the functional options pattern for configuring the server.
+type Option func(*Options)
+
+// WithHost sets the host address for the server to bind to.
+// Use "0.0.0.0" to listen on all interfaces, or a specific IP to restrict access.
+func WithHost(host string) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.Host = host
+        }</span>
+}
+
+// WithPort sets the TCP port number for the server to listen on.
+// The port must be available and the process must have permission to bind to it.
+func WithPort(port int) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.Port = port
+        }</span>
+}
+
+// WithMaxConcurrentClients sets the maximum number of concurrent client connections.
+// This helps prevent resource exhaustion by limiting the number of simultaneous
+// connections the server will accept.
+func WithMaxConcurrentClients(max int) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.MaxConcurrentClients = max
+        }</span>
+}
+
+// WithConnectionTimeout sets the connection timeout.
+func WithConnectionTimeout(timeout time.Duration) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.ConnectionTimeout = timeout
+        }</span>
+}
+
+// WithTLS enables TLS with the specified certificate and key.
+func WithTLS(certPath, keyPath string) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.EnableTLS = true
+                o.CertificatePath = certPath
+                o.CertificateKeyPath = keyPath
+        }</span>
+}
+
+// Add your option functions here, e.g. WithHost, WithPort, etc.
+
+func WithCertificatePath(path string) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.CertificatePath = path
+        }</span>
+}
+
+// Add your option functions here, e.g. WithHost, WithPort, etc.
+
+func WithCertificateKeyPath(path string) Option <span class="cov8" title="1">{
+        return func(o *Options) </span><span class="cov8" title="1">{
+                o.CertificateKeyPath = path
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Package server provides a server implementation for the Model Context Protocol (MCP).
+// It allows applications to receive and process model requests using registered handlers.
+package server
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net"
+        "sync"
+        "time"
+
+        "github.com/narcolepticfox/mcp/core"
+        "github.com/sourcegraph/jsonrpc2"
+)
+
+// Server implements the MCP server that listens for client connections and
+// routes requests to appropriate handlers. It manages the server lifecycle,
+// network listeners, and registered method handlers.
+type Server struct {
+        options   Options
+        status    core.Status
+        statusMu  sync.RWMutex
+        listeners []net.Listener
+        handlers  map[string]interface{}
+        callbacks []func(core.StatusChangeEvent)
+
+        ctx    context.Context
+        cancel context.CancelFunc
+        wg     sync.WaitGroup
+}
+
+// New creates a new MCP server with the given options.
+// It applies all provided option functions to configure the server and
+// initializes it with default values for all unspecified options.
+func New(options ...Option) *Server <span class="cov8" title="1">{
+        opts := DefaultOptions()
+        for _, opt := range options </span><span class="cov8" title="1">{
+                opt(&amp;opts)
+        }</span>
+
+        <span class="cov8" title="1">ctx, cancel := context.WithCancel(context.Background())
+
+        return &amp;Server{
+                options:   opts,
+                status:    core.StatusStopped,
+                handlers:  make(map[string]interface{}),
+                callbacks: make([]func(core.StatusChangeEvent), 0),
+                ctx:       ctx,
+                cancel:    cancel,
+        }</span>
+}
+
+// RegisterHandler registers a handler with the server for processing model requests.
+// It registers the handler for all methods it supports, checking for conflicts
+// with already registered handlers. Returns an error if a method is already registered.
+func (s *Server) RegisterHandler(handler Handler) error <span class="cov8" title="1">{
+        for _, method := range handler.Methods() </span><span class="cov8" title="1">{
+                if _, exists := s.handlers[method]; exists </span><span class="cov8" title="1">{
+                        return fmt.Errorf("handler for method %s already registered", method)
+                }</span>
+                <span class="cov8" title="1">s.handlers[method] = handler</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Start starts the server and begins listening for client connections.
+// It creates network listeners based on the configured options and handles
+// incoming client connections. Returns an error if the server is already
+// running or if it fails to set up the listeners.
+func (s *Server) Start() error <span class="cov8" title="1">{
+        s.statusMu.Lock()
+        if s.status != core.StatusStopped </span><span class="cov0" title="0">{
+                s.statusMu.Unlock()
+                return fmt.Errorf("cannot start server in %s state", s.status)
+        }</span>
+        <span class="cov8" title="1">s.updateStatusLocked(core.StatusStarting, nil)
+        s.statusMu.Unlock()
+
+        // Create TCP listener
+        addr := fmt.Sprintf("%s:%d", s.options.Host, s.options.Port)
+        listener, err := net.Listen("tcp", addr)
+        if err != nil </span><span class="cov0" title="0">{
+                s.updateStatus(core.StatusFailed, err)
+                return fmt.Errorf("failed to listen on %s: %w", addr, err)
+        }</span>
+
+        <span class="cov8" title="1">s.listeners = append(s.listeners, listener)
+
+        // Start accepting connections
+        s.wg.Add(1)
+        go s.acceptConnections(listener)
+
+        s.updateStatus(core.StatusRunning, nil)
+        log.Printf("MCP server listening on %s", addr)
+
+        return nil</span>
+}
+
+func (s *Server) acceptConnections(listener net.Listener) <span class="cov8" title="1">{
+        defer s.wg.Done()
+
+        for </span><span class="cov8" title="1">{
+                conn, err := listener.Accept()
+                if err != nil </span><span class="cov8" title="1">{
+                        // Check if we're shutting down
+                        select </span>{
+                        case &lt;-s.ctx.Done():<span class="cov8" title="1">
+                                return</span>
+                        default:<span class="cov0" title="0">
+                                log.Printf("Error accepting connection: %v", err)
+                                continue</span>
+                        }
+                }
+
+                // Handle each connection in a goroutine
+                <span class="cov8" title="1">s.wg.Add(1)
+                go s.handleConnection(conn)</span>
+        }
+}
+
+func (s *Server) handleConnection(conn net.Conn) <span class="cov8" title="1">{
+        defer s.wg.Done()
+        defer conn.Close()
+
+        log.Printf("Client connected from %s", conn.RemoteAddr())
+
+        // Create JSON-RPC stream
+        stream := jsonrpc2.NewBufferedStream(conn, jsonrpc2.VSCodeObjectCodec{})
+
+        // Create JSON-RPC handler
+        handler := &amp;rpcHandler{server: s}
+
+        // Create JSON-RPC connection
+        rpcConn := jsonrpc2.NewConn(s.ctx, stream, handler)
+
+        // Wait for connection to close
+        &lt;-rpcConn.DisconnectNotify()
+
+        log.Printf("Client disconnected from %s", conn.RemoteAddr())
+}</span>
+
+// Stop stops the server.
+func (s *Server) Stop() error <span class="cov8" title="1">{
+        s.statusMu.Lock()
+        if s.status != core.StatusRunning </span><span class="cov0" title="0">{
+                s.statusMu.Unlock()
+                return fmt.Errorf("cannot stop server in %s state", s.status)
+        }</span>
+        <span class="cov8" title="1">s.updateStatusLocked(core.StatusStopping, nil)
+        s.statusMu.Unlock()
+
+        // Cancel the context to signal shutdown
+        s.cancel()
+
+        // Close all listeners
+        for _, listener := range s.listeners </span><span class="cov8" title="1">{
+                listener.Close()
+        }</span>
+
+        // Wait for all goroutines to finish
+        <span class="cov8" title="1">s.wg.Wait()
+
+        s.updateStatus(core.StatusStopped, nil)
+        log.Printf("MCP server stopped")
+
+        return nil</span>
+}
+
+// Status returns the current server status.
+func (s *Server) Status() core.Status <span class="cov8" title="1">{
+        s.statusMu.RLock()
+        defer s.statusMu.RUnlock()
+        return s.status
+}</span>
+
+// OnStatusChange registers a callback for status changes.
+func (s *Server) OnStatusChange(callback func(core.StatusChangeEvent)) <span class="cov8" title="1">{
+        s.callbacks = append(s.callbacks, callback)
+}</span>
+
+func (s *Server) updateStatus(newStatus core.Status, err error) <span class="cov8" title="1">{
+        s.statusMu.Lock()
+        defer s.statusMu.Unlock()
+        s.updateStatusLocked(newStatus, err)
+}</span>
+
+func (s *Server) updateStatusLocked(newStatus core.Status, err error) <span class="cov8" title="1">{
+        oldStatus := s.status
+        s.status = newStatus
+
+        event := core.StatusChangeEvent{
+                OldStatus: oldStatus,
+                NewStatus: newStatus,
+                Timestamp: time.Now(),
+                Error:     err,
+        }
+
+        // Notify callbacks
+        for _, callback := range s.callbacks </span><span class="cov8" title="1">{
+                go callback(event)
+        }</span>
+}
+
+// rpcHandler implements jsonrpc2.Handler.
+type rpcHandler struct {
+        server *Server
+}
+
+// Handle handles JSON-RPC requests.
+func (h *rpcHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) <span class="cov8" title="1">{
+        // Find the appropriate handler
+        handler, ok := h.server.handlers[req.Method]
+        if !ok </span><span class="cov0" title="0">{
+                err := conn.ReplyWithError(ctx, req.ID, &amp;jsonrpc2.Error{
+                        Code:    jsonrpc2.CodeMethodNotFound,
+                        Message: fmt.Sprintf("method not found: %s", req.Method),
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error replying to client: %v", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+
+        // Handle the request based on the method
+        <span class="cov8" title="1">switch req.Method </span>{
+        case "mcp.processModel":<span class="cov8" title="1">
+                h.handleProcessModel(ctx, conn, req, handler)</span>
+        default:<span class="cov0" title="0">
+                err := conn.ReplyWithError(ctx, req.ID, &amp;jsonrpc2.Error{
+                        Code:    jsonrpc2.CodeInvalidRequest,
+                        Message: fmt.Sprintf("unknown method: %s", req.Method),
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error replying to client: %v", err)
+                }</span>
+        }
+}
+
+func (h *rpcHandler) handleProcessModel(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, handler interface{}) <span class="cov8" title="1">{
+        modelHandler, ok := handler.(ModelHandler)
+        if !ok </span><span class="cov0" title="0">{
+                err := conn.ReplyWithError(ctx, req.ID, &amp;jsonrpc2.Error{
+                        Code:    jsonrpc2.CodeInternalError,
+                        Message: "handler is not a ModelHandler",
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error replying to client: %v", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        // Parse the request
+        <span class="cov8" title="1">var modelReq core.ModelRequest
+        if err := json.Unmarshal(*req.Params, &amp;modelReq); err != nil </span><span class="cov0" title="0">{
+                err := conn.ReplyWithError(ctx, req.ID, &amp;jsonrpc2.Error{
+                        Code:    jsonrpc2.CodeInvalidParams,
+                        Message: fmt.Sprintf("invalid params: %v", err),
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error replying to client: %v", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+
+        // Process the request
+        <span class="cov8" title="1">resp, err := modelHandler.ProcessModel(ctx, &amp;modelReq)
+        if err != nil </span><span class="cov0" title="0">{
+                err := conn.ReplyWithError(ctx, req.ID, &amp;jsonrpc2.Error{
+                        Code:    jsonrpc2.CodeInternalError,
+                        Message: fmt.Sprintf("processing error: %v", err),
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error replying to client: %v", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+
+        // Send the response
+        <span class="cov8" title="1">if err := conn.Reply(ctx, req.ID, resp); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error replying to client: %v", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Package testutil provides utilities for testing MCP components.
+package testutil
+
+import (
+        "context"
+        "errors"
+        "sync"
+        "time"
+
+        "github.com/narcolepticfox/mcp/core"
+)
+
+// MockClient provides a mock implementation of a client for testing.
+type MockClient struct {
+        status           core.Status
+        statusMu         sync.RWMutex
+        isConnected      bool
+        callbacks        []func(core.StatusChangeEvent)
+        processResponse  *core.ModelResponse
+        processError     error
+        startError       error
+        stopError        error
+        connectDelay     time.Duration
+        processDelay     time.Duration
+        requestsReceived []*core.ModelRequest
+        mu               sync.Mutex
+}
+
+// NewMockClient creates a new mock client for testing.
+func NewMockClient() *MockClient <span class="cov0" title="0">{
+        return &amp;MockClient{
+                status:           core.StatusStopped,
+                callbacks:        make([]func(core.StatusChangeEvent), 0),
+                requestsReceived: make([]*core.ModelRequest, 0),
+        }
+}</span>
+
+// Start simulates starting the client.
+func (c *MockClient) Start() error <span class="cov0" title="0">{
+        c.statusMu.Lock()
+        defer c.statusMu.Unlock()
+
+        if c.status != core.StatusStopped </span><span class="cov0" title="0">{
+                return errors.New("cannot start client in non-stopped state")
+        }</span>
+
+        <span class="cov0" title="0">if c.startError != nil </span><span class="cov0" title="0">{
+                c.status = core.StatusFailed
+                return c.startError
+        }</span>
+
+        // Simulate connection delay
+        <span class="cov0" title="0">if c.connectDelay &gt; 0 </span><span class="cov0" title="0">{
+                time.Sleep(c.connectDelay)
+        }</span>
+
+        <span class="cov0" title="0">oldStatus := c.status
+        c.status = core.StatusRunning
+        c.isConnected = true
+
+        c.notifyStatusChange(oldStatus, c.status, nil)
+        return nil</span>
+}
+
+// Stop simulates stopping the client.
+func (c *MockClient) Stop() error <span class="cov0" title="0">{
+        c.statusMu.Lock()
+        defer c.statusMu.Unlock()
+
+        if c.status != core.StatusRunning </span><span class="cov0" title="0">{
+                return errors.New("cannot stop client in non-running state")
+        }</span>
+
+        <span class="cov0" title="0">if c.stopError != nil </span><span class="cov0" title="0">{
+                return c.stopError
+        }</span>
+
+        <span class="cov0" title="0">oldStatus := c.status
+        c.status = core.StatusStopped
+        c.isConnected = false
+
+        c.notifyStatusChange(oldStatus, c.status, nil)
+        return nil</span>
+}
+
+// Status returns the current status of the mock client.
+func (c *MockClient) Status() core.Status <span class="cov0" title="0">{
+        c.statusMu.RLock()
+        defer c.statusMu.RUnlock()
+        return c.status
+}</span>
+
+// IsConnected returns whether the mock client is connected.
+func (c *MockClient) IsConnected() bool <span class="cov0" title="0">{
+        c.statusMu.RLock()
+        defer c.statusMu.RUnlock()
+        return c.isConnected
+}</span>
+
+// OnStatusChange registers a callback for status changes.
+func (c *MockClient) OnStatusChange(callback func(core.StatusChangeEvent)) <span class="cov0" title="0">{
+        c.statusMu.Lock()
+        defer c.statusMu.Unlock()
+        c.callbacks = append(c.callbacks, callback)
+}</span>
+
+// ProcessModel simulates processing a model request.
+func (c *MockClient) ProcessModel(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error) <span class="cov0" title="0">{
+        c.mu.Lock()
+        c.requestsReceived = append(c.requestsReceived, req)
+        c.mu.Unlock()
+
+        // Check if context is already canceled
+        select </span>{
+        case &lt;-ctx.Done():<span class="cov0" title="0">
+                return nil, ctx.Err()</span>
+        default:<span class="cov0" title="0"></span>
+                // Continue processing
+        }
+
+        // Simulate processing delay
+        <span class="cov0" title="0">if c.processDelay &gt; 0 </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-time.After(c.processDelay):<span class="cov0" title="0"></span>
+                        // Continue after delay
+                case &lt;-ctx.Done():<span class="cov0" title="0">
+                        return nil, ctx.Err()</span>
+                }
+        }
+
+        // Return predefined response or error
+        <span class="cov0" title="0">if c.processError != nil </span><span class="cov0" title="0">{
+                return nil, c.processError
+        }</span>
+
+        <span class="cov0" title="0">if c.processResponse != nil </span><span class="cov0" title="0">{
+                return c.processResponse, nil
+        }</span>
+
+        // Default response echoes back the request
+        <span class="cov0" title="0">return &amp;core.ModelResponse{
+                ID:      req.ID,
+                Success: true,
+                Results: req.ModelData,
+        }, nil</span>
+}
+
+// SetStartError configures the mock client to return an error when Start is called.
+func (c *MockClient) SetStartError(err error) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.startError = err
+}</span>
+
+// SetStopError configures the mock client to return an error when Stop is called.
+func (c *MockClient) SetStopError(err error) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.stopError = err
+}</span>
+
+// SetConnectDelay configures the mock client to delay during connect.
+func (c *MockClient) SetConnectDelay(delay time.Duration) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.connectDelay = delay
+}</span>
+
+// SetProcessDelay configures the mock client to delay during ProcessModel.
+func (c *MockClient) SetProcessDelay(delay time.Duration) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.processDelay = delay
+}</span>
+
+// SetProcessResponse configures the mock client to return a specific response.
+func (c *MockClient) SetProcessResponse(resp *core.ModelResponse) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.processResponse = resp
+}</span>
+
+// SetProcessError configures the mock client to return an error when ProcessModel is called.
+func (c *MockClient) SetProcessError(err error) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.processError = err
+}</span>
+
+// GetRequestsReceived returns the requests that have been received by the mock client.
+func (c *MockClient) GetRequestsReceived() []*core.ModelRequest <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        return c.requestsReceived
+}</span>
+
+// Reset resets the mock client to its initial state.
+func (c *MockClient) Reset() <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.statusMu.Lock()
+        defer c.statusMu.Unlock()
+
+        c.status = core.StatusStopped
+        c.isConnected = false
+        c.processResponse = nil
+        c.processError = nil
+        c.startError = nil
+        c.stopError = nil
+        c.connectDelay = 0
+        c.processDelay = 0
+        c.requestsReceived = make([]*core.ModelRequest, 0)
+}</span>
+
+// notifyStatusChange notifies all registered callbacks about a status change.
+func (c *MockClient) notifyStatusChange(oldStatus, newStatus core.Status, err error) <span class="cov0" title="0">{
+        event := core.StatusChangeEvent{
+                OldStatus: oldStatus,
+                NewStatus: newStatus,
+                Timestamp: time.Now(),
+                Error:     err,
+        }
+
+        // Copy callbacks to avoid holding the lock during callback execution
+        var callbacksCopy []func(core.StatusChangeEvent)
+        callbacksCopy = append(callbacksCopy, c.callbacks...)
+
+        // Execute callbacks without holding the lock
+        for _, callback := range callbacksCopy </span><span class="cov0" title="0">{
+                go callback(event)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Package testutil provides utilities for testing MCP components.
+package testutil
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "net"
+        "sync"
+        "testing"
+
+        "github.com/narcolepticfox/mcp/core"
+        "github.com/sourcegraph/jsonrpc2"
+)
+
+// MockServer provides a test implementation of an MCP server.
+type MockServer struct {
+        t           *testing.T
+        listener    net.Listener
+        port        int
+        conn        *jsonrpc2.Conn
+        mutex       sync.Mutex
+        handler     func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error)
+        shouldError bool
+}
+
+// NewMockServer creates a new mock server for testing.
+func NewMockServer(t *testing.T) (*MockServer, error) <span class="cov0" title="0">{
+        port, err := GetFreePort()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">mockServer := &amp;MockServer{
+                t:        t,
+                listener: listener,
+                port:     port,
+                handler:  func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error) </span><span class="cov0" title="0">{ return nil, nil }</span>,
+        }
+
+        <span class="cov0" title="0">go mockServer.serve()
+
+        return mockServer, nil</span>
+}
+
+// serve handles connections to the mock server.
+func (m *MockServer) serve() <span class="cov0" title="0">{
+        for </span><span class="cov0" title="0">{
+                conn, err := m.listener.Accept()
+                if err != nil </span><span class="cov0" title="0">{
+                        // Expected when closing
+                        return
+                }</span>
+
+                <span class="cov0" title="0">m.mutex.Lock()
+                m.conn = jsonrpc2.NewConn(
+                        context.Background(),
+                        jsonrpc2.NewBufferedStream(conn, jsonrpc2.VSCodeObjectCodec{}),
+                        jsonrpc2.HandlerWithError(m.handle),
+                )
+                m.mutex.Unlock()</span>
+        }
+}
+
+// handle processes JSON-RPC requests.
+func (m *MockServer) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) <span class="cov0" title="0">{
+        switch req.Method </span>{
+        case "mcp.processModel":<span class="cov0" title="0">
+                if m.shouldError </span><span class="cov0" title="0">{
+                        return nil, &amp;jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams, Message: "Test error"}
+                }</span>
+
+                <span class="cov0" title="0">var modelReq core.ModelRequest
+                if err := json.Unmarshal(*req.Params, &amp;modelReq); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to unmarshal request params: %w", err)
+                }</span>
+
+                <span class="cov0" title="0">return m.handler(ctx, &amp;modelReq)</span>
+        default:<span class="cov0" title="0">
+                return nil, &amp;jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: "Method not found"}</span>
+        }
+}
+
+// Check if this is correctly initialized
+func (m *MockServer) Port() int <span class="cov0" title="0">{
+        // Add nil check
+        if m == nil </span><span class="cov0" title="0">{
+                return 0 // or another appropriate default
+        }</span>
+        <span class="cov0" title="0">return m.port</span>
+}
+
+// SetShouldError configures the mock server to return errors.
+func (m *MockServer) SetShouldError(shouldError bool) <span class="cov0" title="0">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+        m.shouldError = shouldError
+}</span>
+
+// SetupModelHandler configures a custom handler function for model processing requests.
+func (m *MockServer) SetupModelHandler(handler func(ctx context.Context, req *core.ModelRequest) (*core.ModelResponse, error)) <span class="cov0" title="0">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+        m.handler = handler
+}</span>
+
+// Close shuts down the mock server.
+func (m *MockServer) Close() error <span class="cov0" title="0">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+
+        if m.conn != nil </span><span class="cov0" title="0">{
+                m.conn.Close()
+                m.conn = nil
+        }</span>
+
+        <span class="cov0" title="0">return m.listener.Close()</span>
+}
+
+// Start starts the mock server.
+func (m *MockServer) Start() error <span class="cov0" title="0">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+        // Server is already started by NewMockServer, no need to do anything here
+        return nil
+}</span>
+
+// Stop stops the mock server.
+func (m *MockServer) Stop() error <span class="cov0" title="0">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+
+        if m.conn != nil </span><span class="cov0" title="0">{
+                m.conn.Close()
+                m.conn = nil
+        }</span>
+
+        <span class="cov0" title="0">if m.listener != nil </span><span class="cov0" title="0">{
+                return m.listener.Close()
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">// Package testutil provides utilities for testing MCP components.
+package testutil
+
+import (
+        "context"
+        "net"
+        "testing"
+        "time"
+
+        "github.com/narcolepticfox/mcp/core"
+)
+
+// GetFreePort returns an available TCP port.
+func GetFreePort() (int, error) <span class="cov0" title="0">{
+        addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+
+        <span class="cov0" title="0">l, err := net.ListenTCP("tcp", addr)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov0" title="0">defer l.Close()
+        return l.Addr().(*net.TCPAddr).Port, nil</span>
+}
+
+// CreateTestModelRequest creates a model request for testing.
+func CreateTestModelRequest() *core.ModelRequest <span class="cov0" title="0">{
+        req := core.NewModelRequest()
+        req.ModelData["name"] = "Test Model"
+        req.ModelData["value"] = 42
+        req.Parameters = append(req.Parameters, core.Parameter{
+                Name:  "param1",
+                Value: "value1",
+                Type:  "string",
+        })
+        return req
+}</span>
+
+// WaitForCondition waits for a condition to be true or times out.
+func WaitForCondition(timeout time.Duration, interval time.Duration, condition func() bool) bool <span class="cov0" title="0">{
+        deadline := time.Now().Add(timeout)
+        for time.Now().Before(deadline) </span><span class="cov0" title="0">{
+                if condition() </span><span class="cov0" title="0">{
+                        return true
+                }</span>
+                <span class="cov0" title="0">time.Sleep(interval)</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+// ContextWithTimeout creates a context with timeout and handles defer cancel
+func ContextWithTimeout(t *testing.T, duration time.Duration) (context.Context, context.CancelFunc) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(context.Background(), duration)
+        t.Cleanup(func() </span><span class="cov0" title="0">{ cancel() }</span>)
+        <span class="cov0" title="0">return ctx, cancel</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
