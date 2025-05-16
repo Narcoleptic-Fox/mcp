@@ -44,6 +44,7 @@ func TestDefaultModelHandler_ProcessModel(t *testing.T) {
 
 // MockHandler implements the Handler interface for testing
 type MockHandler struct {
+	Handler
 	methods []string
 }
 

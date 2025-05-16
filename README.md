@@ -45,8 +45,8 @@ import (
 func main() {
 	// Create a server with custom options
 	srv := server.New(
-		server.WithHost("0.0.0.0"),
-		server.WithPort(5000),
+		WithHost("0.0.0.0"),
+		WithPort(5000),
 	)
 
 	// Register the default model handler
@@ -91,8 +91,8 @@ import (
 func main() {
 	// Create a client with custom options
 	c := client.New(
-		client.WithServerHost("localhost"),
-		client.WithServerPort(5000),
+		WithServerHost("localhost"),
+		WithServerPort(5000),
 	)
 
 	// Start the client
@@ -182,7 +182,8 @@ The server package enables applications to implement MCP services:
 You can implement custom handlers to process specific types of requests:
 
 ```go
-type CustomModelHandler struct{}
+type CustomModelHandler struct{
+}
 
 func (h *CustomModelHandler) Methods() []string {
 	return []string{"mcp.processModel"}
