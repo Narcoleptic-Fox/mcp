@@ -88,5 +88,5 @@ jobs:
         alert-threshold: '150%'
         comment-always: true
         # Add these missing parameters from your error message
-        gh-pages-branch: gh-pages
-        benchmark-data-dir-path: dev/bench
+        # gh-pages-branch: gh-pages
+        # benchmark-data-dir-path: dev/bench
