@@ -224,9 +224,7 @@ func (c *MockClient) notifyStatusChange(oldStatus, newStatus core.Status, err er
 
 	// Copy callbacks to avoid holding the lock during callback execution
 	var callbacksCopy []func(core.StatusChangeEvent)
-	for _, callback := range c.callbacks {
-		callbacksCopy = append(callbacksCopy, callback)
-	}
+	callbacksCopy = append(callbacksCopy, c.callbacks...)
 
 	// Execute callbacks without holding the lock
 	for _, callback := range callbacksCopy {

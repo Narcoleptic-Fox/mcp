@@ -25,8 +25,7 @@ func TestClientLifecycle(t *testing.T) {
 	})
 
 	// Start the client (this should fail since there's no server running)
-	err := client.Start()
-	assert.Error(t, err, "Start should fail when server is not available")
+	assert.Error(t, client.Start(), "Start should fail when server is not available")
 
 	// Client should be in error state after failed start
 	assert.Equal(t, core.StatusFailed, client.Status(), "Client should be in failed state after failed start")
@@ -68,8 +67,6 @@ func TestClientWithMockServer(t *testing.T) {
 	// Start the client
 	err = client.Start()
 	assert.NoError(t, err, "Client should start successfully with mock server running")
-	err = client.Stop()
-	assert.NoError(t, err, "Client should stop successfully")
 
 	// Wait for the client to fully connect
 	assert.True(t, testutil.WaitForCondition(2*time.Second, 100*time.Millisecond, func() bool {
@@ -88,6 +85,9 @@ func TestClientWithMockServer(t *testing.T) {
 	assert.Equal(t, testResp.ID, resp.ID, "Response ID should match")
 	assert.Equal(t, testResp.Success, resp.Success, "Success flag should match")
 	assert.Equal(t, testResp.Results["result"], resp.Results["result"], "Result value should match")
+
+	err = client.Stop()
+	assert.NoError(t, err, "Client should stop successfully")
 }
 
 func TestClientReconnect(t *testing.T) {
@@ -120,7 +120,8 @@ func TestClientReconnect(t *testing.T) {
 	}), "Client should enter running state")
 
 	// Stop the server to simulate disconnection
-	mockServer.Stop()
+	err = mockServer.Stop()
+	require.NoError(t, err, "Failed to stop mock server")
 
 	// Wait a bit for the client to detect disconnection
 	time.Sleep(100 * time.Millisecond)
